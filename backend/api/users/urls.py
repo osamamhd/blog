@@ -1,8 +1,17 @@
 from django.urls import path
 
-from .views import UsersListAPIView
+from .views import (
+    UserListAPIView,
+    UserRetrieveUpdateDeleteAPIView,
+    UserRegisterAPIView,
+    UserLoginAPIView, confirm_email,
+)
 
 
 urlpatterns = [
-    path('', UsersListAPIView.as_view()),
+    path("", UserListAPIView.as_view()),
+    path("<str:username>/", UserRetrieveUpdateDeleteAPIView.as_view()),
+    path("auth/register/", UserRegisterAPIView.as_view()),
+    path("auth/login/", UserLoginAPIView.as_view()),
+    path("auth/email/confirm/<str:token>/", confirm_email),
 ]

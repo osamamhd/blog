@@ -1,4 +1,6 @@
 from rest_framework import permissions
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 from rest_framework.mixins import (
     CreateModelMixin,
@@ -12,7 +14,7 @@ from .utils import PostListPaginator
 
 
 """ METHODS:
-    GET ---> api/v1/posts/, with 2 optional parms (status, search)
+    GET ---> api/v1/posts/, with 3 optional parms (status, search, count)
     POST --> api/v1/posts/
 
     GET --> api/v1/posts/id/
@@ -27,16 +29,23 @@ class PostCreateListAPIView(CreateModelMixin, ListAPIView):
     ]
     serializer_class = PostSerializer
     pagination_class = PostListPaginator
+    queryset = Post.objects.all()
 
-    def get_queryset(self):
-        qs = Post.objects.all()
+    def get_queryset(self, *args, **kwargs):
         status = self.request.GET.get("status", None)
         search_txt = self.request.GET.get("search", "")
-        search_query = Q(title__icontains=search_txt) | Q(content__icontains=search_txt)
-        if status and status.lower() == "published":
-            qs = Post.published.all().filter(search_query)
-        if status and status.lower() == "draft":
-            qs = Post.drafted.all().filter(search_query)
+        count = self.request.GET.get("count", None)
+        qs = super().get_queryset()
+        if status:
+            qs = qs.filter(status=status)
+        if search_txt:
+            query = Q(title__icontains=search_txt) | Q(content__icontains=search_txt)
+            qs = qs.filter(query)
+        try:
+            count = int(count)
+            qs = qs[:count]
+        except (ValueError, TypeError):
+            pass
         return qs
 
     def post(self, request, *args, **kwargs):
@@ -162,3 +171,70 @@ class ReplyRetrieveUpdateDeleteAPIView(
 
     def delete(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+
+@api_view(['POST', ])
+def post_upvote(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    post.upvotes += 1
+    post.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
+
+@api_view(['POST', ])
+def post_downvote(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    post.downvotes += 1
+    post.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
+
+@api_view(['POST', ])
+def comment_upvote(request, post_pk, pk):
+    post = get_object_or_404(Post, pk=post_pk)
+    comment = get_object_or_404(post.comments, pk=pk)
+    comment.upvotes += 1
+    comment.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
+
+@api_view(['POST', ])
+def comment_downvote(request, post_pk, pk):
+    post = get_object_or_404(Post, pk=post_pk)
+    comment = get_object_or_404(post.comments, pk=pk)
+    comment.downvotes += 1
+    comment.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
+
+@api_view(['POST', ])
+def reply_upvote(request, post_pk, comment_pk, pk):
+    post = get_object_or_404(Post, pk=post_pk)
+    comment = get_object_or_404(post.comments, pk=comment_pk)
+    reply = get_object_or_404(comment.replies, pk=pk)
+    reply.upvotes += 1
+    reply.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
+
+@api_view(['POST', ])
+def reply_downvote(request, post_pk, comment_pk, pk):
+    post = get_object_or_404(Post, pk=post_pk)
+    comment = get_object_or_404(post.comments, pk=comment_pk)
+    reply = get_object_or_404(comment.replies, pk=pk)
+    reply.downvotes += 1
+    reply.save()
+    data = {
+        'success': True
+    }
+    return Response(data)
